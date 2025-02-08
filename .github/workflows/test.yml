@@ -14,6 +14,12 @@ on:
      - 'OG KernelSU'
      - 'KernelSU-Next'
 
+    build_is_multi:
+     description: 'Multi Build'
+     required: false
+     default: false
+     type: boolean
+     
     SUSFS4KSU:
      description: 'SUSFS4KSU (KSU needed!)'
      required: false
@@ -60,6 +66,10 @@ jobs:
       run: |
        chmod a+x *.sh
 
+       if [[ "${{ inputs.build_is_multi }}" == "true" ]]; then
+            export multi_build="yes"
+       fi
+       
        if [[ "${{ inputs.SUSFS4KSU }}" == "true" ]]; then
             export USE_KSU_SUSFS="yes"
        fi

@@ -119,7 +119,49 @@ fi
 # Extract clang version
 COMPILER_STRING=$(clang -v 2>&1 | head -n 1 | sed 's/(https..*//' | sed 's/ version//')
 
+text=$(
+    cat <<EOF
+*~~~ QuartiX CI ~~~*
+*GKI Version*: \`$GKI_VERSION\`
+*Kernel Version*: \`Multi-Build (Non-KSU)\`
+*Build Status*: \`$STATUS\`
+*Date*: \`$KBUILD_BUILD_TIMESTAMP\`
+*KSU*: \`$([[ $USE_KSU == "yes" ]] && echo "true" || echo "false")\`$([[ $USE_KSU == "yes" ]] && echo "
+*KSU Version*: \`$KSU_VERSION\`")
+*KSU-Next*: \`$([[ $USE_KSU_NEXT == "yes" ]] && echo "true" || echo "false")\`$([[ $USE_KSU_NEXT == "yes" ]] && echo "
+*KSU-Next Version*: \`$KSU_NEXT_VERSION\`")
+*SUSFS*: \`$([[ $USE_KSU_SUSFS == "yes" ]] && echo "true" || echo "false")\`$([[ $USE_KSU_SUSFS == "yes" ]] && echo "
+*SUSFS Version*: \`$SUSFS_VERSION\`")
+*Compiler*: \`$COMPILER_STRING\`
+EOF
+)
+
+if [[ $multi_build == "yes" ]]; then
+	send_msg "$text"
+	# Build GKI
+	cd $WORKDIR/common
+	set +e
+	(
+		make ARCH=arm64 LLVM=1 LLVM_IAS=1 O=$WORKDIR/out CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_COMPAT=arm-linux-gnueabi- mrproper
+		make ARCH=arm64 LLVM=1 LLVM_IAS=1 O=$WORKDIR/out CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_COMPAT=arm-linux-gnueabi- $KERNEL_DEFCONFIG
+		make ARCH=arm64 LLVM=1 LLVM_IAS=1 O=$WORKDIR/out CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_COMPAT=arm-linux-gnueabi- -j$(nproc --all) Image $([ $STATUS == "STABLE" ] && echo "Image.lz4 Image.gz")
+	) 2>&1 | tee $WORKDIR/build.log
+	set -e
+	KERNEL_IMAGE="$WORKDIR/out/arch/arm64/boot/Image"
+	if ! [[ -f $KERNEL_IMAGE ]]; then
+		send_msg "❌ Build failed!"
+		upload_file "$WORKDIR/build.log"
+		exit 1
+	else
+		send_msg "Build Non-KSU Multi Success!"
+		mkdir $WORKDIR/multi
+		cp $KERNEL_IMAGE $WORKDIR/multi/
+	fi
+fi
+	
+
 # KSU or KSU-Next setup
+cd $WORKDIR
 if [[ $USE_KSU_NEXT == "yes" ]]; then
     if [[ $USE_KSU_SUSFS == "yes" ]]; then
         curl -LSs https://raw.githubusercontent.com/rifsxd/KernelSU-Next/refs/heads/next/kernel/setup.sh | bash -s next-susfs
@@ -209,6 +251,7 @@ send_msg "$text"
 cd $WORKDIR/common
 set +e
 (
+	make ARCH=arm64 LLVM=1 LLVM_IAS=1 O=$WORKDIR/out CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_COMPAT=arm-linux-gnueabi- mrproper
     make ARCH=arm64 LLVM=1 LLVM_IAS=1 O=$WORKDIR/out CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_COMPAT=arm-linux-gnueabi- $KERNEL_DEFCONFIG
     make ARCH=arm64 LLVM=1 LLVM_IAS=1 O=$WORKDIR/out CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_COMPAT=arm-linux-gnueabi- -j$(nproc --all) Image $([ $STATUS == "STABLE" ] && echo "Image.lz4 Image.gz")
 ) 2>&1 | tee $WORKDIR/build.log
@@ -221,6 +264,7 @@ if ! [[ -f $KERNEL_IMAGE ]]; then
     upload_file "$WORKDIR/build.log"
     exit 1
 else
+	
     # Clone AnyKernel
     git clone --depth=1 "$ANYKERNEL_REPO" -b "$ANYKERNEL_BRANCH" $WORKDIR/anykernel
 
@@ -300,6 +344,7 @@ else
 
     # Zipping
     cd $WORKDIR/anykernel
+	cp $KERNEL_IMAGE .
     sed -i "s/DUMMY1/$KERNEL_VERSION/g" anykernel.sh
     sed -i "s/DATE/$BUILD_DATE/g" anykernel.sh
 
@@ -318,9 +363,19 @@ else
         # not included ksu susfs
         sed -i "s/DUMMY2//g" anykernel.sh
     fi
+	
+	if [[ $multi_build == "yes" ]]; then
+		# Install bsdiff to patch Multi
+		sudo add-apt-repository ppa:eugenesan/ppa
+		sudo apt-get update -y
+		sudo apt-get install bsdiff -y
+		mkdir bs_patches
+		bsdiff $WORKDIR/multi/Image $KERNEL_IMAGE ./bs_patches/ksu.p
+		rm -rf Image
+		cp $WORKDIR/multi/Image .
+	fi
 
-    cp $KERNEL_IMAGE .
-    zip -r9 $ZIP_NAME ./* -x LICENSE
+    zip -r9 $ZIP_NAME ./*
     mv $ZIP_NAME $WORKDIR
     cd $WORKDIR
 
@@ -356,7 +411,7 @@ else
     sleep 2
 
     # Upload files to release
-    for release_file in "$WORKDIR"/*.zip "$WORKDIR"/*.img; do
+    for release_file in "$WORKDIR"/*.zip "$WORKDIR"/*.img ; do
         if [[ -f $release_file ]]; then
             if ! gh release upload "$TAG" "$release_file"; then
                 echo "❌ Failed to upload $release_file"
