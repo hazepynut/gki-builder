@@ -177,6 +177,19 @@ elif [[ $USE_KSU_SUSFS == "yes" ]] && [[ $USE_KSU != "yes" ]] && [[ $USE_KSU_NEX
     exit 1
 fi
 
+# Kernel patches for 6.6
+git clone --depth=1 https://github.com/hazepynut/android15-6.6 $WORKDIR/kp
+cd $WORKDIR/common
+for i in $WORKDIR/kp/*.patch; do
+    if ! git am <$i; then
+        patch -p1 <$i || {
+            echo "failed to apply $i"
+            exit 1
+        }
+        git am --continue
+    fi
+done
+
 cd $WORKDIR
 
 text=$(

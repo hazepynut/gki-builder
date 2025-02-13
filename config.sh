@@ -2,7 +2,7 @@
 export KERNEL_NAME="QuartiX"
 
 # GKI Version
-export GKI_VERSION="android12-5.10"
+export GKI_VERSION="android15-6.6"
 
 # Build variables
 export TZ="Asia/Makassar"
@@ -12,11 +12,11 @@ export KBUILD_BUILD_TIMESTAMP=$(date)
 
 # AnyKernel variables
 export ANYKERNEL_REPO="https://github.com/hazepynut/anykernel"
-export ANYKERNEL_BRANCH="gki"
+export ANYKERNEL_BRANCH="gki-android15-6.6"
 
 # Kernel
-export KERNEL_REPO="https://github.com/hazepynut/kernel_new"
-export KERNEL_BRANCH="android12-5.10"
+export KERNEL_REPO="https://android.googlesource.com/kernel/common"
+export KERNEL_BRANCH="android15-6.6-lts"
 export KERNEL_DEFCONFIG="gki_defconfig"
 
 # Releases repository
