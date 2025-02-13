@@ -111,7 +111,7 @@ jobs:
       - name: Build
         run: |
           chmod a+x *.sh
-          export USE_KSU_NEXT=yes
+          export USE_KSU_MKSU=yes
           export USE_KSU_SUSFS=yes
           export PATH="/usr/lib/ccache:$PATH"
           ./build.sh
