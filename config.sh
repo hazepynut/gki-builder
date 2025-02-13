@@ -15,9 +15,9 @@ export ANYKERNEL_REPO="https://github.com/hazepynut/anykernel"
 export ANYKERNEL_BRANCH="gki"
 
 # Kernel
-export KERNEL_REPO="https://github.com/hazepynut/kernel_new"
-export KERNEL_BRANCH="android12-5.10"
-export KERNEL_DEFCONFIG="gki_defconfig"
+export KERNEL_REPO="https://github.com/ChiseWaguri/android_kernel_xiaomi_marble"
+export KERNEL_BRANCH="next-susfs"
+export KERNEL_DEFCONFIG="marble_defconfig"
 
 # Releases repository
 export GKI_RELEASES_REPO="https://github.com/hazepynut/quartix-releases"

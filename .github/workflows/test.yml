@@ -5,30 +5,33 @@ on:
    inputs:
 
     KernelSU:
-     description: 'KernelSU'
+     description: "KernelSU"
      required: false
-     default: ''
+     default: ""
      type: choice
      options:
-     - 'None'
-     - 'OG KernelSU'
-     - 'KernelSU-Next'
+     - "None"
+     - "OG KernelSU"
+     - "5ec1cff's MKSU"
+     - "Rsuntk's KSU Fork"
+     - "xx's KSU Fork"
+     - "KernelSU-Next"
 
     SUSFS4KSU:
-     description: 'SUSFS4KSU (KSU needed!)'
+     description: "SUSFS4KSU (KSU needed!)"
      required: false
      default: false
      type: boolean
 
     Clang:
-     description: 'Select Compiler'
+     description: "Select Compiler"
      required: false
-     default: ''
+     default: ""
      type: choice
      options:
-     - 'Default'
-     - 'AOSP Clang'
-     - 'Custom Clang'
+     - "Default"
+     - "AOSP Clang"
+     - "Custom Clang"
 
 jobs:
   build:
@@ -73,9 +76,19 @@ jobs:
        if [[ "${{ inputs.SUSFS4KSU }}" == "true" ]]; then
             export USE_KSU_SUSFS="yes"
        fi
+       
+       if [[ ! -z "${{ inputs.KernelSU }}" ]]; then
+            export USE_KSU="yes"
+       fi
 
        if [[ "${{ inputs.KernelSU }}" == "OG KernelSU" ]]; then
-            export USE_KSU="yes"
+            export USE_KSU_OG="yes"
+       elif [[ "${{ inputs.KernelSU }}" == "5ec1cff's MKSU" ]]; then
+            export USE_KSU_MKSU="yes"
+       elif [[ "${{ inputs.KernelSU }}" == "Rsuntk's KSU Fork" ]]; then
+            export USE_KSU_RKSU="yes"
+       elif [[ "${{ inputs.KernelSU }}" == "xx's KSU Fork" ]]; then
+            export USE_KSU_XX="yes"
        elif [[ "${{ inputs.KernelSU }}" == "KernelSU-Next" ]]; then
             export USE_KSU_NEXT="yes"
        fi
@@ -93,8 +106,13 @@ jobs:
        export PATH="/usr/lib/ccache:$PATH"
        ./build.sh
 
+    - name: Update version with random CI string
+      run: |
+        build_date=$(date -d "$KBUILD_BUILD_TIMESTAMP" +"%y%m%d%H%M")
+        echo "BUILD_ID=${build_date}" >> $GITHUB_ENV
+
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: kernel-zip
+        name: kernel_${{ env.BUILD_ID }}.zip
         path: "./*.zip"
