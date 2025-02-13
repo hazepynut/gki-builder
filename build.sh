@@ -201,7 +201,7 @@ elif [[ $USE_KSU == "yes" ]] && [[ $USE_KSU_SUSFS == "yes" ]]; then
 	
 	
     # KSU + SUSFS setup
-    if [[ $USE_KSU_OG == "yes" ]] || [[ USE_KSU_XX == "yes" ]] || [[ USE_KSU_MKSU == "yes" ]] || [[ USE_KSU_RKSU == "yes" ]]; then
+    if [[ $USE_KSU_OG == "yes" ]] || [[ $USE_KSU_XX == "yes" ]] || [[ $USE_KSU_MKSU == "yes" ]] || [[ $USE_KSU_RKSU == "yes" ]]; then
 
         # Apply patch to KernelSU
         cd $WORKDIR/KernelSU
@@ -210,7 +210,7 @@ elif [[ $USE_KSU == "yes" ]] && [[ $USE_KSU_SUSFS == "yes" ]]; then
         
         # mksu susfs patch
         if  [[ $nextpatch == true ]]; then
-			if [ USE_KSU_MKSU == "yes" ]] || [[ USE_KSU_RSU == "yes" ]] || [[ USE_KSU_XX == "yes" ]]; then
+			if [ $USE_KSU_MKSU == "yes" ]] || [[ $USE_KSU_RSU == "yes" ]] || [[ $USE_KSU_XX == "yes" ]]; then
 				cp $wild_patches/mksu_susfs.patch ./
 				patch -p1 < mksu_susfs.patch
 			fi
