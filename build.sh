@@ -2,22 +2,22 @@
 set -ex
 
 ret=0
-if [[ -z $CHAT_ID ]]; then
+if [ -z $CHAT_ID ]; then
     echo "error: please fill CHAT_ID secret!"
     ((ret++))
 fi
 
-if [[ -z $TOKEN ]]; then
+if [ -z $TOKEN ]; then
     echo "error: please fill TOKEN secret!"
     ((ret++))
 fi
 
-if [[ -z $GH_TOKEN ]]; then
+if [ -z $GH_TOKEN ]; then
     echo "error: please fill GH_TOKEN secret!"
     ((ret++))
 fi
 
-[[ $ret -gt 0 ]] && exit $ret
+[ $ret -gt 0 ] && exit $ret
 
 mkdir -p android-kernel && cd android-kernel
 
@@ -32,7 +32,7 @@ source $BUILDERDIR/config.sh
 upload_file() {
     local file="$1"
 
-    if [[ -f $file ]]; then
+    if [ -f $file ]; then
         chmod 777 "$file"
     else
         echo "[ERROR] file $file doesn't exist"
@@ -61,10 +61,10 @@ send_msg() {
 # ---------------
 
 # Kernel variant
-if [[ $USE_KSU == "yes" ]]; then
+if [ $USE_KSU == "yes" ]; then
     # ksu
     VARIANT="KSU"
-elif [[ $USE_KSU_NEXT == "yes" ]]; then
+elif [ $USE_KSU_NEXT == "yes" ]; then
     # ksu next
     VARIANT="KSUN"
 else
@@ -82,11 +82,11 @@ cd $WORKDIR
 
 # Download Toolchains
 mkdir $WORKDIR/clang
-if [[ $USE_AOSP_CLANG == "true" ]]; then
+if [ $USE_AOSP_CLANG == "true" ]; then
     wget -qO $WORKDIR/clang.tar.gz https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-$AOSP_CLANG_VERSION.tar.gz
     tar -xf $WORKDIR/clang.tar.gz -C $WORKDIR/clang/
     rm -f $WORKDIR/clang.tar.gz
-elif [[ $USE_CUSTOM_CLANG == "true" ]]; then
+elif [ $USE_CUSTOM_CLANG == "true" ]; then
     if [[ $CUSTOM_CLANG_SOURCE =~ git ]]; then
         if [[ $CUSTOM_CLANG_SOURCE == *'.tar.'* ]]; then
             wget -q $CUSTOM_CLANG_SOURCE
@@ -100,7 +100,7 @@ elif [[ $USE_CUSTOM_CLANG == "true" ]]; then
         echo "error: Clang source other than git is not supported."
         exit 1
     fi
-elif [[ $USE_AOSP_CLANG == "true" ]] && [[ $USE_CUSTOM_CLANG == "true" ]]; then
+elif [ $USE_AOSP_CLANG == "true" ] && [ $USE_CUSTOM_CLANG == "true" ]; then
     echo "error: You have to choose one, AOSP Clang or Custom Clang!"
     exit 1
 else
@@ -120,19 +120,19 @@ fi
 COMPILER_STRING=$(clang -v 2>&1 | head -n 1 | sed 's/(https..*//' | sed 's/ version//')
 
 # KSU or KSU-Next setup
-if [[ $USE_KSU_NEXT == "yes" ]]; then
-    if [[ $USE_KSU_SUSFS == "yes" ]]; then
+if [ $USE_KSU_NEXT == "yes" ]; then
+    if [ $USE_KSU_SUSFS == "yes" ]; then
         curl -LSs https://raw.githubusercontent.com/rifsxd/KernelSU-Next/refs/heads/next/kernel/setup.sh | bash -s next-susfs
     else
         curl -LSs https://raw.githubusercontent.com/rifsxd/KernelSU-Next/refs/heads/next/kernel/setup.sh | bash -
     fi
     cd $WORKDIR/KernelSU-Next
     KSU_VERSION=$(git describe --abbrev=0 --tags)
-elif [[ $USE_KSU == "yes" ]]; then
+elif [ $USE_KSU == "yes" ]; then
     curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/refs/heads/main/kernel/setup.sh" | bash -
     cd $WORKDIR/KernelSU
     KSU_VERSION=$(git describe --abbrev=0 --tags)
-elif [[ $USE_KSU_NEXT == "yes" ]] && [[ $USE_KSU == "yes" ]]; then
+elif [ $USE_KSU_NEXT == "yes" ] && [ $USE_KSU == "yes" ]; then
     echo
     echo "error: You have to choose one, KSU or KSUN!"
     exit 1
@@ -144,13 +144,13 @@ git config --global user.email "kontol@example.com"
 git config --global user.name "Your Name"
 
 # SUSFS4KSU setup
-if [[ $USE_KSU == "yes" ]] || [[ $USE_KSU_NEXT == "yes" ]] && [[ $USE_KSU_SUSFS == "yes" ]]; then
+if [ $USE_KSU == "yes" ] || [ $USE_KSU_NEXT == "yes" ] && [ $USE_KSU_SUSFS == "yes" ]; then
     git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu -b gki-$GKI_VERSION $WORKDIR/susfs4ksu
     SUSFS_PATCHES="$WORKDIR/susfs4ksu/kernel_patches"
 
-    if [[ $USE_KSU == "yes" ]]; then
+    if [ $USE_KSU == "yes" ]; then
         VARIANT="KSUxSuSFS"
-    elif [[ $USE_KSU_NEXT == "yes" ]]; then
+    elif [ $USE_KSU_NEXT == "yes" ]; then
         VARIANT="KSUNxSuSFS"
     fi
 
@@ -160,7 +160,7 @@ if [[ $USE_KSU == "yes" ]] || [[ $USE_KSU_NEXT == "yes" ]] && [[ $USE_KSU_SUSFS 
     cp $SUSFS_PATCHES/fs/* ./fs/
 
     # Apply patch to KernelSU (KSU Side)
-    if [[ $USE_KSU == "yes" ]]; then
+    if [ $USE_KSU == "yes" ]; then
         cd $WORKDIR/KernelSU
         cp $SUSFS_PATCHES/KernelSU/10_enable_susfs_for_ksu.patch .
         patch -p1 <10_enable_susfs_for_ksu.patch || exit 1
@@ -172,7 +172,7 @@ if [[ $USE_KSU == "yes" ]] || [[ $USE_KSU_NEXT == "yes" ]] && [[ $USE_KSU_SUSFS 
     patch -p1 <50_add_susfs_in_gki-$GKI_VERSION.patch || exit 1
 
     SUSFS_VERSION=$(grep -E '^#define SUSFS_VERSION' ./include/linux/susfs.h | cut -d' ' -f3 | sed 's/"//g')
-elif [[ $USE_KSU_SUSFS == "yes" ]] && [[ $USE_KSU != "yes" ]] && [[ $USE_KSU_NEXT != "yes" ]]; then
+elif [ $USE_KSU_SUSFS == "yes" ] && [ $USE_KSU != "yes" ] && [ $USE_KSU_NEXT != "yes" ]; then
     echo "error: You can't use SuSFS without KSU enabled!"
     exit 1
 fi
@@ -201,7 +201,7 @@ text=$(
 *Date*: \`$KBUILD_BUILD_TIMESTAMP\`
 *KSU Variant*: \`$(echo "$VARIANT")\`$(echo "$VARIANT" | grep -qi 'KSU' && echo "
 *KSU Version*: \`$KSU_VERSION\`")
-*SUSFS*: \`$([[ $USE_KSU_SUSFS == "yes" ]] && echo "$SUSFS_VERSION" || echo "none")\`
+*SUSFS*: \`$([ $USE_KSU_SUSFS == "yes" ] && echo "$SUSFS_VERSION" || echo "none")\`
 *Compiler*: \`$COMPILER_STRING\`
 EOF
 )
@@ -210,7 +210,7 @@ send_msg "$text"
 
 cd $WORKDIR/common
 # Build GKI
-if [[ $BUILD_KERNEL == "yes" ]]; then
+if [ $BUILD_KERNEL == "yes" ]; then
     set +e
     (
         make \
@@ -230,10 +230,10 @@ if [[ $BUILD_KERNEL == "yes" ]]; then
             CROSS_COMPILE=aarch64-linux-gnu- \
             CROSS_COMPILE_COMPAT=arm-linux-gnueabi- \
             -j$(nproc --all) \
-            Image $([ $STATUS == "STABLE" ] && echo "Image.lz4 Image.gz")
+            Image $([ $STATUS == "STABLE" ] || [ $BUILD_BOOTIMG == "yes" ] && echo "Image.lz4 Image.gz")
     ) 2>&1 | tee $WORKDIR/build.log
     set -e
-elif [[ $GENERATE_DEFCONFIG == "yes" ]]; then
+elif [ $GENERATE_DEFCONFIG == "yes" ]; then
     make \
         ARCH=arm64 \
         LLVM=1 \
@@ -251,7 +251,7 @@ fi
 cd $WORKDIR
 
 KERNEL_IMAGE="$WORKDIR/out/arch/arm64/boot/Image"
-if ! [[ -f $KERNEL_IMAGE ]]; then
+if ! [ -f $KERNEL_IMAGE ]; then
     send_msg "❌ Build failed!"
     upload_file "$WORKDIR/build.log"
     exit 1
@@ -262,7 +262,7 @@ else
     ZIP_NAME=$(
         echo "$ZIP_NAME" |
             sed "s/KVER/$KERNEL_VERSION/g" |
-            if [[ $VARIANT == "none" ]]; then
+            if [ $VARIANT == "none" ]; then
                 sed "s/VARIANT-//g"
             else
                 sed "s/VARIANT/$VARIANT/g"
@@ -270,7 +270,7 @@ else
     )
 
     sed -i "s/kernel.string=.*/kernel.string=${KERNEL_NAME} ${KERNEL_VERSION} (${BUILD_DATE}) ${VARIANT}/g" $WORKDIR/anykernel/anykernel.sh
-    if [[ $VARIANT == "none" ]]; then
+    if [ $VARIANT == "none" ]; then
         OLD=$(grep 'kernel.string' $WORKDIR/anykernel/anykernel.sh | cut -f2 -d '=')
         NEW=$(
             echo "$OLD" |
@@ -279,7 +279,7 @@ else
         sed -i "s/kernel.string=.*/kernel.string=${NEW}/g" $WORKDIR/anykernel/anykernel.sh
     fi
 
-    if [[ $STATUS == "STABLE" ]]; then
+    if [ $STATUS == "STABLE" ] || [ $BUILD_BOOTIMG == "yes" ]; then
         # Clone tools
         AOSP_MIRROR=https://android.googlesource.com
         BRANCH=main-kernel-build-2024
@@ -305,7 +305,7 @@ else
                 --kernel "$kernel" \
                 --output "$output" \
                 --ramdisk out/ramdisk \
-                --os_version 12.0.0 \
+                --os_version 15.0.0 \
                 --os_patch_level $(date +"%Y-%m")
 
             sleep 1
@@ -324,10 +324,10 @@ else
         cp $KERNEL_IMAGES .
 
         # Download and unpack GKI
-        wget -qO gki.zip https://dl.google.com/android/gki/gki-certified-boot-android12-5.10-2023-01_r1.zip
+        wget -qO gki.zip https://dl.google.com/android/gki/gki-certified-boot-android15-6.6-2025-02_r1.zip
         unzip -q gki.zip && rm gki.zip
-        $UNPACK_BOOTIMG --boot_img="$(pwd)/boot-5.10.img"
-        rm "$(pwd)/boot-5.10.img"
+        $UNPACK_BOOTIMG --boot_img=./boot-6.6.img
+        rm ./boot-6.6.img
 
         # Generate and sign boot images
         for format in raw lz4 gz; do
@@ -360,7 +360,7 @@ else
     zip -r9 $WORKDIR/$ZIP_NAME ./* -x LICENSE
     cd $WORKDIR
 
-    if [[ $STATUS == "STABLE" ]]; then
+    if [ $STATUS == "STABLE" ]; then
         ## Upload into GitHub Release
         TAG="$BUILD_DATE"
         RELEASE_MESSAGE="${ZIP_NAME%.zip}"
@@ -386,7 +386,7 @@ else
 
         # Upload files to release
         for release_file in "$WORKDIR"/*.zip "$WORKDIR"/*.img; do
-            if [[ -f $release_file ]]; then
+            if [ -f $release_file ]; then
                 if ! gh release upload "$TAG" "$release_file"; then
                     echo "❌ Failed to upload $release_file"
                     exit 1
@@ -395,10 +395,11 @@ else
             fi
         done
     fi
-    if [[ $STATUS == "STABLE" ]]; then
+    if [ $STATUS == "STABLE" ]; then
         send_msg "📦 [$RELEASE_MESSAGE]($URL)"
     else
         mv $WORKDIR/$ZIP_NAME $BUILDERDIR
+        mv $WORKDIR/*.img $BUILDERDIR
         send_msg "✅ Build Succedded"
     fi
     exit 0

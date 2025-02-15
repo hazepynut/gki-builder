@@ -5,30 +5,36 @@ on:
    inputs:
 
     KernelSU:
-     description: 'KernelSU'
-     required: false
-     default: ''
-     type: choice
-     options:
-     - 'None'
-     - 'OG KernelSU'
-     - 'KernelSU-Next'
+      description: 'KernelSU'
+      required: false
+      default: ''
+      type: choice
+      options:
+      - 'None'
+      - 'OG KernelSU'
+      - 'KernelSU-Next'
 
     SUSFS4KSU:
-     description: 'SUSFS4KSU (KSU needed!)'
-     required: false
-     default: false
-     type: boolean
+      description: 'SUSFS4KSU (KSU needed!)'
+      required: false
+      default: false
+      type: boolean
 
     Clang:
-     description: 'Select Compiler'
-     required: false
-     default: ''
-     type: choice
-     options:
-     - 'Default'
-     - 'AOSP Clang'
-     - 'Custom Clang'
+      description: 'Select Compiler'
+      required: false
+      default: ''
+      type: choice
+      options:
+      - 'Default'
+      - 'AOSP Clang'
+      - 'Custom Clang'
+     
+    BUILD_BOOTIMG:
+      description: 'Build Boot Image'
+      required: true
+      default: true
+      type: boolean
 
 jobs:
   build:
@@ -70,31 +76,56 @@ jobs:
       run: |
        chmod a+x *.sh
 
-       if [[ "${{ inputs.SUSFS4KSU }}" == "true" ]]; then
+       if [[ ${{ inputs.SUSFS4KSU }} == "true" ]]; then
             export USE_KSU_SUSFS="yes"
        fi
 
-       if [[ "${{ inputs.KernelSU }}" == "OG KernelSU" ]]; then
+       if [[ ${{ inputs.KernelSU }} == "OG KernelSU" ]]; then
             export USE_KSU="yes"
-       elif [[ "${{ inputs.KernelSU }}" == "KernelSU-Next" ]]; then
+       elif [[ ${{ inputs.KernelSU }} == "KernelSU-Next" ]]; then
             export USE_KSU_NEXT="yes"
        fi
 
-       if [[ "${{ inputs.Clang }}" == "AOSP Clang" ]]; then
+       if [[ ${{ inputs.Clang }} == "AOSP Clang" ]]; then
            sed -i 's/export USE_CUSTOM_CLANG=.*/export USE_CUSTOM_CLANG=false/g' config.sh
            sed -i 's/export USE_AOSP_CLANG=.*/export USE_AOSP_CLANG=true/g' config.sh
-       elif [[ "${{ inputs.Clang }}" == "Custom Clang" ]]; then
+       elif [[ ${{ inputs.Clang }} == "Custom Clang" ]]; then
            sed -i 's/export USE_CUSTOM_CLANG=.*/export USE_CUSTOM_CLANG=true/g' config.sh
            sed -i 's/export USE_AOSP_CLANG=.*/export USE_AOSP_CLANG=false/g' config.sh
-       elif [[ "${{ inputs.Clang }}" == "Default" ]]; then
+       elif [[ ${{ inputs.Clang }} == "Default" ]]; then
             : # follow config.sh
        fi
 
+       if [[ ${{ inputs.BUILD_BOOTIMG }} == "true" ]]; then
+            export BUILD_BOOTIMG="yes*
+       fi
+       
        export PATH="/usr/lib/ccache:$PATH"
        ./build.sh
 
-    - name: Upload Artifact
+    - name: Upload kernel zip
       uses: actions/upload-artifact@v4
       with:
         name: kernel-${{ github.run_number }}
         path: "./*.zip"
+
+    - name: Upload boot image (gzip)
+      uses: actions/upload-artifact@v4
+      if: inputs.BUILD_BOOTIMG == 'true'
+      with:
+        name: boot-gz-${{ github.run_number }}
+        path: "./*-gz.img"
+
+    - name: Upload boot image (lz4)
+      uses: actions/upload-artifact@v4
+      if: inputs.BUILD_BOOTIMG == 'true'
+      with:
+        name: boot-lz4-${{ github.run_number }}
+        path: "./*-lz4.img"
+        
+    - name: Upload boot image (raw)
+      uses: actions/upload-artifact@v4
+      if: inputs.BUILD_BOOTIMG == 'true'
+      with:
+        name: boot-raw-${{ github.run_number }}
+        path: "./*-raw.img"
