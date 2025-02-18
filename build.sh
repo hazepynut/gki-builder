@@ -19,6 +19,9 @@ fi
 
 [ $ret -gt 0 ] && exit $ret
 
+# if unset
+[ -z $BUILD_LKMS ] && BUILD_LKMS=true
+
 mkdir -p android-kernel && cd android-kernel
 
 WORKDIR=$(pwd)
@@ -64,9 +67,11 @@ send_msg() {
 if [ $USE_KSU == "yes" ]; then
     # ksu
     VARIANT="KSU"
+    KSU_REPO_URL="https://raw.githubusercontent.com/tiann/KernelSU/refs/heads/main/kernel/setup.sh"
 elif [ $USE_KSU_NEXT == "yes" ]; then
     # ksu next
     VARIANT="KSUN"
+    KSU_REPO_URL="https://raw.githubusercontent.com/rifsxd/KernelSU-Next/refs/heads/next/kernel/setup.sh"
 else
     # vanilla
     VARIANT="none"
@@ -122,14 +127,14 @@ COMPILER_STRING=$(clang -v 2>&1 | head -n 1 | sed 's/(https..*//' | sed 's/ vers
 # KSU or KSU-Next setup
 if [ $USE_KSU_NEXT == "yes" ]; then
     if [ $USE_KSU_SUSFS == "yes" ]; then
-        curl -LSs https://raw.githubusercontent.com/rifsxd/KernelSU-Next/refs/heads/next/kernel/setup.sh | bash -s next-susfs
+        curl -LSs $KSU_REPO_URL  | bash -s next-susfs
     else
-        curl -LSs https://raw.githubusercontent.com/rifsxd/KernelSU-Next/refs/heads/next/kernel/setup.sh | bash -
+        curl -LSs $KSU_REPO_URL | bash -
     fi
     cd $WORKDIR/KernelSU-Next
     KSU_VERSION=$(git describe --abbrev=0 --tags)
 elif [ $USE_KSU == "yes" ]; then
-    curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/refs/heads/main/kernel/setup.sh" | bash -
+    curl -LSs $KSU_REPO_URL | bash -
     cd $WORKDIR/KernelSU
     KSU_VERSION=$(git describe --abbrev=0 --tags)
 elif [ $USE_KSU_NEXT == "yes" ] && [ $USE_KSU == "yes" ]; then
@@ -209,40 +214,29 @@ EOF
 send_msg "$text"
 
 cd $WORKDIR/common
+
+MAKE_ARGS="
+ARCH=arm64
+LLVM=1
+LLVM_IAS=1
+O=$WORKDIR/out
+CROSS_COMPILE=aarch64-linux-gnu-
+CROSS_COMPILE_COMPAT=arm-linux-gnueabi-
+"
+
 # Build GKI
 if [ $BUILD_KERNEL == "yes" ]; then
     set +e
     (
-        make \
-            ARCH=arm64 \
-            LLVM=1 \
-            LLVM_IAS=1 \
-            O=$WORKDIR/out \
-            CROSS_COMPILE=aarch64-linux-gnu- \
-            CROSS_COMPILE_COMPAT=arm-linux-gnueabi- \
-            $KERNEL_DEFCONFIG
-
-        make \
-            ARCH=arm64 \
-            LLVM=1 \
-            LLVM_IAS=1 \
-            O=$WORKDIR/out \
-            CROSS_COMPILE=aarch64-linux-gnu- \
-            CROSS_COMPILE_COMPAT=arm-linux-gnueabi- \
-            -j$(nproc --all) \
-            Image $([ $STATUS == "STABLE" ] || [ $BUILD_BOOTIMG == "yes" ] && echo "Image.lz4 Image.gz")
+        make $MAKE_ARGS $KERNEL_DEFCONFIG
+	    # use 'export BUILD_LKMS=true'
+	    [ "$BUILD_LKMS" != "true" ] && sed -i 's/=m/=n/g' "$WORKDIR/out/.config"
+        make $MAKE_ARGS -j$(nproc --all)	\
+		Image $([ $STATUS == "STABLE" ] || [ $BUILD_BOOTIMG == "yes" ] && echo "Image.lz4 Image.gz")
     ) 2>&1 | tee $WORKDIR/build.log
     set -e
 elif [ $GENERATE_DEFCONFIG == "yes" ]; then
-    make \
-        ARCH=arm64 \
-        LLVM=1 \
-        LLVM_IAS=1 \
-        O=$WORKDIR/out \
-        CROSS_COMPILE=aarch64-linux-gnu- \
-        CROSS_COMPILE_COMPAT=arm-linux-gnueabi- \
-        $KERNEL_DEFCONFIG
-
+    make $MAKE_ARGS $KERNEL_DEFCONFIG
     mv $WORKDIR/out/.config $WORKDIR/config
     ret=$(curl -s bashupload.com -T $WORKDIR/config)
     send_msg "$ret"
@@ -360,7 +354,7 @@ else
     zip -r9 $WORKDIR/$ZIP_NAME ./* -x LICENSE
     cd $WORKDIR
 
-    if [ $STATUS == "STABLE" ]; then
+    if [ $STATUS == "STABLE" ] || [ $UPLOAD2GH == "yes" ]; then
         ## Upload into GitHub Release
         TAG="$BUILD_DATE"
         RELEASE_MESSAGE="${ZIP_NAME%.zip}"
@@ -395,7 +389,7 @@ else
             fi
         done
     fi
-    if [ $STATUS == "STABLE" ]; then
+    if [ $STATUS == "STABLE" ] || [ $UPLOAD2GH == "yes" ]; then
         send_msg "📦 [$RELEASE_MESSAGE]($URL)"
     else
         mv $WORKDIR/$ZIP_NAME $BUILDERDIR

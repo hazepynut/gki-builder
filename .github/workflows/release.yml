@@ -34,11 +34,11 @@ jobs:
       - name: ccache
         uses: hendrikmuhs/ccache-action@v1.2
         with:
-          key: kernel-release-${{ github.ref_name }}
+          key: kernel-${{ github.ref_name }}
           max-size: 4G
           restore-keys: |
-            kernel-release-${{ github.ref_name }}-
-            kernel-release-
+            kernel-${{ github.ref_name }}-
+            kernel-
 
       - name: Build
         run: |
@@ -69,11 +69,11 @@ jobs:
       - name: ccache
         uses: hendrikmuhs/ccache-action@v1.2
         with:
-          key: kernel-release-${{ github.ref_name }}
+          key: kernel-${{ github.ref_name }}
           max-size: 4G
           restore-keys: |
-            kernel-release-${{ github.ref_name }}-
-            kernel-release-
+            kernel-${{ github.ref_name }}-
+            kernel-
 
       - name: Build
         run: |
@@ -106,11 +106,11 @@ jobs:
       - name: ccache
         uses: hendrikmuhs/ccache-action@v1.2
         with:
-          key: kernel-release-${{ github.ref_name }}
+          key: kernel-${{ github.ref_name }}
           max-size: 4G
           restore-keys: |
-            kernel-release-${{ github.ref_name }}-
-            kernel-release-
+            kernel-${{ github.ref_name }}-
+            kernel-
 
       - name: Build
         run: |
