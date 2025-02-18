@@ -18,6 +18,9 @@ export ANYKERNEL_BRANCH="gki-android15-6.6"
 export KERNEL_REPO="https://android.googlesource.com/kernel/common"
 export KERNEL_BRANCH="android15-6.6-lts"
 export KERNEL_DEFCONFIG="gki_defconfig"
+# Defconfigs would be merge in the compiling processes
+DEFCONFIGS= # Leave this empty if you don't need to merge any configs
+
 
 # Releases repository
 export GKI_RELEASES_REPO="https://github.com/hazepynut/quartix-releases"

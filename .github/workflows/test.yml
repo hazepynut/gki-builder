@@ -121,28 +121,28 @@ jobs:
 
     - name: Upload kernel zip
       uses: actions/upload-artifact@v4
-      if: inputs.UPLOAD2GH == 'false'
+      if: ${{ inputs.UPLOAD2GH }} == 'false'
       with:
         name: kernel-${{ github.run_number }}
         path: "./*.zip"
 
     - name: Upload boot image (gzip)
       uses: actions/upload-artifact@v4
-      if: inputs.BUILD_BOOTIMG == 'true' && inputs.UPLOAD2GH== 'false'
+      if: ${{ inputs.BUILD_BOOTIMG }} == 'true' && ${{ inputs.UPLOAD2GH }} == 'false'
       with:
         name: boot-gz-${{ github.run_number }}
         path: "./*-gz.img"
 
     - name: Upload boot image (lz4)
       uses: actions/upload-artifact@v4
-      if: inputs.BUILD_BOOTIMG == 'true' && inputs.UPLOAD2GH == 'false'
+      if: ${{ inputs.BUILD_BOOTIMG }} == 'true' && ${{ inputs.UPLOAD2GH }} == 'false'
       with:
         name: boot-lz4-${{ github.run_number }}
         path: "./*-lz4.img"
 
     - name: Upload boot image (raw)
       uses: actions/upload-artifact@v4
-      if: inputs.BUILD_BOOTIMG == 'true' && inputs.UPLOAD2GH == 'false'
+      if: ${{ inputs.BUILD_BOOTIMG }} == 'true' && ${{ inputs.UPLOAD2GH }} == 'false'
       with:
         name: boot-raw-${{ github.run_number }}
         path: "./*-raw.img"
