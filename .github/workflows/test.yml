@@ -22,7 +22,7 @@ on:
     Clang:
       description: 'Select Compiler'
       required: false
-      default: ''
+      default: 'Default'
       type: choice
       options:
       - 'Default'
@@ -80,40 +80,40 @@ jobs:
         TOKEN: ${{ secrets.TOKEN }}
         GH_TOKEN: ${{ secrets.GH_TOKEN }}
         STATUS: "BETA"
-        BUILD_KERNEL: "yes"
+        BUILD_KERNEL: "true"
       run: |
        chmod a+x *.sh
 
-       if [[ ${{ inputs.SUSFS4KSU }} == "true" ]]; then
-            export USE_KSU_SUSFS="yes"
+       if [[ "${{ inputs.SUSFS4KSU }}" == "true" ]]; then
+            export USE_KSU_SUSFS="true"
        fi
 
-       if [[ ${{ inputs.KernelSU }} == "OG KernelSU" ]]; then
-            export USE_KSU="yes"
-       elif [[ ${{ inputs.KernelSU }} == "KernelSU-Next" ]]; then
-            export USE_KSU_NEXT="yes"
+       if [[ "${{ inputs.KernelSU }}" == "OG KernelSU" ]]; then
+            export USE_KSU="true"
+       elif [[ "${{ inputs.KernelSU }}" == "KernelSU-Next" ]]; then
+            export USE_KSU_NEXT="true"
        fi
 
-       if [[ ${{ inputs.BUILD_LKMS }} != "true" ]]; then
+       if [[ "${{ inputs.BUILD_LKMS }}" != "true" ]]; then
             export BUILD_LKMS="false"
        fi
 
-       if [[ ${{ inputs.Clang }} == "AOSP Clang" ]]; then
+       if [[ "${{ inputs.Clang }}" == "AOSP Clang" ]]; then
            sed -i 's/export USE_CUSTOM_CLANG=.*/export USE_CUSTOM_CLANG=false/g' config.sh
            sed -i 's/export USE_AOSP_CLANG=.*/export USE_AOSP_CLANG=true/g' config.sh
-       elif [[ ${{ inputs.Clang }} == "Custom Clang" ]]; then
+       elif [[ "${{ inputs.Clang }}" == "Custom Clang" ]]; then
            sed -i 's/export USE_CUSTOM_CLANG=.*/export USE_CUSTOM_CLANG=true/g' config.sh
            sed -i 's/export USE_AOSP_CLANG=.*/export USE_AOSP_CLANG=false/g' config.sh
-       elif [[ ${{ inputs.Clang }} == "Default" ]]; then
+       elif [[ "${{ inputs.Clang }}" == "Default" ]]; then
             : # follow config.sh
        fi
 
-       if [[ ${{ inputs.BUILD_BOOTIMG }} == "true" ]]; then
-            export BUILD_BOOTIMG="yes"
+       if [[ "${{ inputs.BUILD_BOOTIMG }}" == "true" ]]; then
+            export BUILD_BOOTIMG="true"
        fi
 
-       if [[ ${{ inputs.UPLOAD2GH }} == "true" ]]; then
-            export UPLOAD2GH="yes"
+       if [[ "${{ inputs.UPLOAD2GH }}" == "true" ]]; then
+            export UPLOAD2GH="true"
        fi
 
        export PATH="/usr/lib/ccache:$PATH"

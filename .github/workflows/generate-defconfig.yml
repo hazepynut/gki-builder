@@ -30,7 +30,7 @@ jobs:
         TOKEN: ${{ secrets.TOKEN }}
         GH_TOKEN: ${{ secrets.GH_TOKEN }}
         STATUS: "BETA"
-        GENERATE_DEFCONFIG: "yes"
+        GENERATE_DEFCONFIG: "true"
       run: |
        chmod a+x *.sh
        ./build.sh

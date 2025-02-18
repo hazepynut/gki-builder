@@ -8,7 +8,7 @@ env:
   CHAT_ID: ${{ secrets.CHAT_ID }}
   TOKEN: ${{ secrets.TOKEN }}
   GH_TOKEN: ${{ secrets.GH_TOKEN }}
-  BUILD_KERNEL: "yes"
+  BUILD_KERNEL: "true"
   MAN_DISABLE: "true"
 
 jobs:
@@ -78,8 +78,8 @@ jobs:
       - name: Build
         run: |
           chmod a+x *.sh
-          export USE_KSU=yes
-          export USE_KSU_SUSFS=yes
+          export USE_KSU=true
+          export USE_KSU_SUSFS=true
           export PATH="/usr/lib/ccache:$PATH"
           ./build.sh
 
@@ -115,7 +115,7 @@ jobs:
       - name: Build
         run: |
           chmod a+x *.sh
-          export USE_KSU_NEXT=yes
-          export USE_KSU_SUSFS=yes
+          export USE_KSU_NEXT=true
+          export USE_KSU_SUSFS=true
           export PATH="/usr/lib/ccache:$PATH"
           ./build.sh

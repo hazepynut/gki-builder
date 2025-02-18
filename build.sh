@@ -2,30 +2,30 @@
 set -ex
 
 ret=0
-if [ -z $CHAT_ID ]; then
+if [[ -z $CHAT_ID ]]; then
     echo "error: please fill CHAT_ID secret!"
     ((ret++))
 fi
 
-if [ -z $TOKEN ]; then
+if [[ -z $TOKEN ]]; then
     echo "error: please fill TOKEN secret!"
     ((ret++))
 fi
 
-if [ -z $GH_TOKEN ]; then
+if [[ -z $GH_TOKEN ]]; then
     echo "error: please fill GH_TOKEN secret!"
     ((ret++))
 fi
 
-[ $ret -gt 0 ] && exit $ret
+[[ $ret -gt 0 ]] && exit $ret
 
 # if unset
-[ -z $BUILD_LKMS ] && BUILD_LKMS=true
+[[ -z $BUILD_LKMS ]] && BUILD_LKMS=true
 
 mkdir -p android-kernel && cd android-kernel
 
 WORKDIR=$(pwd)
-BUILDERDIR=$WORKDIR/..
+BUILDERDIR=$(realpath ..)
 source $BUILDERDIR/config.sh
 
 # ------------------
@@ -35,10 +35,10 @@ source $BUILDERDIR/config.sh
 upload_file() {
     local file="$1"
 
-    if [ -f $file ]; then
+    if [[ -f $file ]]; then
         chmod 777 "$file"
     else
-        echo "[ERROR] file $file doesn't exist"
+        echo "[[ERROR]] file $file doesn't exist"
         exit 1
     fi
 
@@ -64,11 +64,11 @@ send_msg() {
 # ---------------
 
 # Kernel variant
-if [ $USE_KSU == "yes" ]; then
+if [[ $USE_KSU == "true" ]]; then
     # ksu
     VARIANT="KSU"
     KSU_REPO_URL="https://raw.githubusercontent.com/tiann/KernelSU/refs/heads/main/kernel/setup.sh"
-elif [ $USE_KSU_NEXT == "yes" ]; then
+elif [[ $USE_KSU_NEXT == "true" ]]; then
     # ksu next
     VARIANT="KSUN"
     KSU_REPO_URL="https://raw.githubusercontent.com/rifsxd/KernelSU-Next/refs/heads/next/kernel/setup.sh"
@@ -78,43 +78,41 @@ else
 fi
 
 # Clone the kernel source
-git clone --depth=1 $KERNEL_REPO -b $KERNEL_BRANCH $WORKDIR/common
+git clone --depth=1 $KERNEL_REPO -b $KERNEL_BRANCH common
 
 # Extract kernel version
-cd $WORKDIR/common
+cd common
 KERNEL_VERSION=$(make kernelversion)
-cd $WORKDIR
 
 # Download Toolchains
-mkdir $WORKDIR/clang
-if [ $USE_AOSP_CLANG == "true" ]; then
-    wget -qO $WORKDIR/clang.tar.gz https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-$AOSP_CLANG_VERSION.tar.gz
-    tar -xf $WORKDIR/clang.tar.gz -C $WORKDIR/clang/
-    rm -f $WORKDIR/clang.tar.gz
-elif [ $USE_CUSTOM_CLANG == "true" ]; then
-    if [[ $CUSTOM_CLANG_SOURCE =~ git ]]; then
-        if [[ $CUSTOM_CLANG_SOURCE == *'.tar.'* ]]; then
-            wget -q $CUSTOM_CLANG_SOURCE
-            tar -C $WORKDIR/clang/ -xf $WORKDIR/*.tar.*
-            rm -f $WORKDIR/*.tar.*
-        else
-            rm -rf $WORKDIR/clang
-            git clone $CUSTOM_CLANG_SOURCE -b $CUSTOM_CLANG_BRANCH $WORKDIR/clang --depth=1
-        fi
-    else
-        echo "error: Clang source other than git is not supported."
-        exit 1
-    fi
-elif [ $USE_AOSP_CLANG == "true" ] && [ $USE_CUSTOM_CLANG == "true" ]; then
+cd ..
+mkdir clang
+if [[ $USE_AOSP_CLANG == "true" ]] && [[ $USE_CUSTOM_CLANG == "true" ]]; then
     echo "error: You have to choose one, AOSP Clang or Custom Clang!"
     exit 1
+elif [[ $USE_AOSP_CLANG == "true" ]]; then
+    wget -qO clang.tar.gz https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/main/clang-$AOSP_CLANG_VERSION.tar.gz
+    tar -xf clang.tar.gz -C clang/
+    rm -f clang.tar.gz
+elif [[ $USE_CUSTOM_CLANG == "true" ]]; then
+	if [[ $CUSTOM_CLANG_SOURCE ==  ./*'.tar.'* ]]; then
+		wget -q $CUSTOM_CLANG_SOURCE
+		tar -C clang/ -xf  ./*.tar.*
+		rm -f  ./*.tar.*
+    elif [[ $CUSTOM_CLANG_SOURCE =~ git ]]; then
+        rm -rf clang
+        git clone $CUSTOM_CLANG_SOURCE -b $CUSTOM_CLANG_BRANCH clang --depth=1
+    else
+        echo "error: Clang source other than git/tar is not supported."
+        exit 1
+    fi
 else
     echo "stfu."
     exit 1
 fi
 
 # Clone binutils if they don't exist
-if ! echo $WORKDIR/clang/bin/* | grep -q 'aarch64-linux-gnu'; then
+if ! echo clang/bin/* | grep -q 'aarch64-linux-gnu'; then
     git clone --depth=1 https://android.googlesource.com/platform/prebuilts/gas/linux-x86 -b main $WORKDIR/binutils
     export PATH="$WORKDIR/clang/bin:$WORKDIR/binutils:$PATH"
 else
@@ -125,19 +123,19 @@ fi
 COMPILER_STRING=$(clang -v 2>&1 | head -n 1 | sed 's/(https..*//' | sed 's/ version//')
 
 # KSU or KSU-Next setup
-if [ $USE_KSU_NEXT == "yes" ]; then
-    if [ $USE_KSU_SUSFS == "yes" ]; then
+if [[ $USE_KSU_NEXT == "true" ]]; then
+    if [[ $USE_KSU_SUSFS == "true" ]]; then
         curl -LSs $KSU_REPO_URL  | bash -s next-susfs
     else
         curl -LSs $KSU_REPO_URL | bash -
     fi
-    cd $WORKDIR/KernelSU-Next
+    cd KernelSU-Next
     KSU_VERSION=$(git describe --abbrev=0 --tags)
-elif [ $USE_KSU == "yes" ]; then
+elif [[ $USE_KSU == "true" ]]; then
     curl -LSs $KSU_REPO_URL | bash -
-    cd $WORKDIR/KernelSU
+    cd KernelSU
     KSU_VERSION=$(git describe --abbrev=0 --tags)
-elif [ $USE_KSU_NEXT == "yes" ] && [ $USE_KSU == "yes" ]; then
+elif [[ $USE_KSU_NEXT == "true" ]] && [[ $USE_KSU == "true" ]]; then
     echo
     echo "error: You have to choose one, KSU or KSUN!"
     exit 1
@@ -149,35 +147,31 @@ git config --global user.email "kontol@example.com"
 git config --global user.name "Your Name"
 
 # SUSFS4KSU setup
-if [ $USE_KSU == "yes" ] || [ $USE_KSU_NEXT == "yes" ] && [ $USE_KSU_SUSFS == "yes" ]; then
+if [[ $USE_KSU == "true" ]] || [[ $USE_KSU_NEXT == "true" ]] && [[ $USE_KSU_SUSFS == "true" ]]; then
     git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu -b gki-$GKI_VERSION $WORKDIR/susfs4ksu
     SUSFS_PATCHES="$WORKDIR/susfs4ksu/kernel_patches"
 
-    if [ $USE_KSU == "yes" ]; then
+    if [[ $USE_KSU == "true" ]]; then
         VARIANT="KSUxSuSFS"
-    elif [ $USE_KSU_NEXT == "yes" ]; then
+    elif [[ $USE_KSU_NEXT == "true" ]]; then
         VARIANT="KSUNxSuSFS"
     fi
 
     # Copy header files (Kernel Side)
-    cd $WORKDIR/common
+    cd common
     cp $SUSFS_PATCHES/include/linux/* ./include/linux/
     cp $SUSFS_PATCHES/fs/* ./fs/
+	# Apply patch to kernel (Kernel Side)
+    patch -p1 < $SUSFS_PATCHES/50_add_susfs_in_gki-$GKI_VERSION.patch || exit 1
 
     # Apply patch to KernelSU (KSU Side)
-    if [ $USE_KSU == "yes" ]; then
-        cd $WORKDIR/KernelSU
-        cp $SUSFS_PATCHES/KernelSU/10_enable_susfs_for_ksu.patch .
-        patch -p1 <10_enable_susfs_for_ksu.patch || exit 1
+    if [[ $USE_KSU == "true" ]]; then
+        cd ../KernelSU
+        patch -p1 < $SUSFS_PATCHES/KernelSU/10_enable_susfs_for_ksu.patch || exit 1
     fi
 
-    # Apply patch to kernel (Kernel Side)
-    cd $WORKDIR/common
-    cp $SUSFS_PATCHES/50_add_susfs_in_gki-$GKI_VERSION.patch .
-    patch -p1 <50_add_susfs_in_gki-$GKI_VERSION.patch || exit 1
-
     SUSFS_VERSION=$(grep -E '^#define SUSFS_VERSION' ./include/linux/susfs.h | cut -d' ' -f3 | sed 's/"//g')
-elif [ $USE_KSU_SUSFS == "yes" ] && [ $USE_KSU != "yes" ] && [ $USE_KSU_NEXT != "yes" ]; then
+elif [[ $USE_KSU_SUSFS == "true" ]] && [[ $USE_KSU != "true" ]] && [[ $USE_KSU_NEXT != "true" ]]; then
     echo "error: You can't use SuSFS without KSU enabled!"
     exit 1
 fi
@@ -206,14 +200,14 @@ text=$(
 *Date*: \`$KBUILD_BUILD_TIMESTAMP\`
 *KSU Variant*: \`$(echo "$VARIANT")\`$(echo "$VARIANT" | grep -qi 'KSU' && echo "
 *KSU Version*: \`$KSU_VERSION\`")
-*SUSFS*: \`$([ $USE_KSU_SUSFS == "yes" ] && echo "$SUSFS_VERSION" || echo "none")\`
+*SUSFS*: \`$([[ $USE_KSU_SUSFS == "true" ]] && echo "$SUSFS_VERSION" || echo "none")\`
 *Compiler*: \`$COMPILER_STRING\`
 EOF
 )
 
 send_msg "$text"
 
-cd $WORKDIR/common
+cd common
 
 MAKE_ARGS="
 ARCH=arm64
@@ -225,17 +219,17 @@ CROSS_COMPILE_COMPAT=arm-linux-gnueabi-
 "
 
 # Build GKI
-if [ $BUILD_KERNEL == "yes" ]; then
+if [[ $BUILD_KERNEL == "true" ]]; then
     set +e
     (
         make $MAKE_ARGS $KERNEL_DEFCONFIG
 	    # use 'export BUILD_LKMS=true'
-	    [ "$BUILD_LKMS" != "true" ] && sed -i 's/=m/=n/g' "$WORKDIR/out/.config"
+	    [[ "$BUILD_LKMS" != "true" ]] && sed -i 's/=m/=n/g' "$WORKDIR/out/.config"
         make $MAKE_ARGS -j$(nproc --all)	\
-		Image $([ $STATUS == "STABLE" ] || [ $BUILD_BOOTIMG == "yes" ] && echo "Image.lz4 Image.gz")
+		Image $([[ $STATUS == "STABLE" ]] || [[ $BUILD_BOOTIMG == "true" ]] && echo "Image.lz4 Image.gz")
     ) 2>&1 | tee $WORKDIR/build.log
     set -e
-elif [ $GENERATE_DEFCONFIG == "yes" ]; then
+elif [[ $GENERATE_DEFCONFIG == "true" ]]; then
     make $MAKE_ARGS $KERNEL_DEFCONFIG
     mv $WORKDIR/out/.config $WORKDIR/config
     ret=$(curl -s bashupload.com -T $WORKDIR/config)
@@ -245,156 +239,156 @@ fi
 cd $WORKDIR
 
 KERNEL_IMAGE="$WORKDIR/out/arch/arm64/boot/Image"
-if ! [ -f $KERNEL_IMAGE ]; then
+if ! [[ -f $KERNEL_IMAGE ]]; then
     send_msg "❌ Build failed!"
     upload_file "$WORKDIR/build.log"
     exit 1
-else
-    # Clone AnyKernel
-    git clone --depth=1 "$ANYKERNEL_REPO" -b "$ANYKERNEL_BRANCH" $WORKDIR/anykernel
-
-    ZIP_NAME=$(
-        echo "$ZIP_NAME" |
-            sed "s/KVER/$KERNEL_VERSION/g" |
-            if [ $VARIANT == "none" ]; then
-                sed "s/VARIANT-//g"
-            else
-                sed "s/VARIANT/$VARIANT/g"
-            fi
-    )
-
-    sed -i "s/kernel.string=.*/kernel.string=${KERNEL_NAME} ${KERNEL_VERSION} (${BUILD_DATE}) ${VARIANT}/g" $WORKDIR/anykernel/anykernel.sh
-    if [ $VARIANT == "none" ]; then
-        OLD=$(grep 'kernel.string' $WORKDIR/anykernel/anykernel.sh | cut -f2 -d '=')
-        NEW=$(
-            echo "$OLD" |
-                sed "s/none//g"
-        )
-        sed -i "s/kernel.string=.*/kernel.string=${NEW}/g" $WORKDIR/anykernel/anykernel.sh
-    fi
-
-    if [ $STATUS == "STABLE" ] || [ $BUILD_BOOTIMG == "yes" ]; then
-        # Clone tools
-        AOSP_MIRROR=https://android.googlesource.com
-        BRANCH=main-kernel-build-2024
-        git clone $AOSP_MIRROR/kernel/prebuilts/build-tools -b $BRANCH --depth=1 $WORKDIR/build-tools
-        git clone $AOSP_MIRROR/platform/system/tools/mkbootimg -b $BRANCH --depth=1 $WORKDIR/mkbootimg
-
-        # Variables
-        KERNEL_IMAGES=$(echo $WORKDIR/out/arch/arm64/boot/Image*)
-        AVBTOOL=$WORKDIR/build-tools/linux-x86/bin/avbtool
-        MKBOOTIMG=$WORKDIR/mkbootimg/mkbootimg.py
-        UNPACK_BOOTIMG=$WORKDIR/mkbootimg/unpack_bootimg.py
-        BOOT_SIGN_KEY_PATH=$BUILDERDIR/key/verifiedboot.pem
-        BOOTIMG_NAME="${ZIP_NAME%.zip}-boot-dummy.img"
-        # Note: dummy is the Image format
-
-        # Function
-        generate_bootimg() {
-            local kernel="$1"
-            local output="$2"
-
-            # Create boot image
-            $MKBOOTIMG --header_version 4 \
-                --kernel "$kernel" \
-                --output "$output" \
-                --ramdisk out/ramdisk \
-                --os_version 15.0.0 \
-                --os_patch_level $(date +"%Y-%m")
-
-            sleep 1
-
-            # Sign the boot image
-            $AVBTOOL add_hash_footer \
-                --partition_name boot \
-                --partition_size $((64 * 1024 * 1024)) \
-                --image "$output" \
-                --algorithm SHA256_RSA2048 \
-                --key $BOOT_SIGN_KEY_PATH
-        }
-
-        # Prepare boot image
-        mkdir -p $WORKDIR/bootimg && cd $WORKDIR/bootimg
-        cp $KERNEL_IMAGES .
-
-        # Download and unpack GKI
-        wget -qO gki.zip https://dl.google.com/android/gki/gki-certified-boot-android15-6.6-2025-02_r1.zip
-        unzip -q gki.zip && rm gki.zip
-        $UNPACK_BOOTIMG --boot_img=./boot-6.6.img
-        rm ./boot-6.6.img
-
-        # Generate and sign boot images
-        for format in raw lz4 gz; do
-
-            case $format in
-            raw)
-                kernel="./Image"
-                output="${BOOTIMG_NAME/dummy/raw}"
-                ;;
-            lz4)
-                kernel="./Image.lz4"
-                output="${BOOTIMG_NAME/dummy/lz4}"
-                ;;
-            gz)
-                kernel="./Image.gz"
-                output="${BOOTIMG_NAME/dummy/gz}"
-                ;;
-            esac
-
-            # Generate and sign
-            generate_bootimg "$kernel" "$output"
-            mv "$output" "$WORKDIR"
-        done
-        cd $WORKDIR
-    fi
-
-    # Zipping
-    cd $WORKDIR/anykernel
-    cp $KERNEL_IMAGE .
-    zip -r9 $WORKDIR/$ZIP_NAME ./* -x LICENSE
-    cd $WORKDIR
-
-    if [ $STATUS == "STABLE" ] || [ $UPLOAD2GH == "yes" ]; then
-        ## Upload into GitHub Release
-        TAG="$BUILD_DATE"
-        RELEASE_MESSAGE="${ZIP_NAME%.zip}"
-        URL="$GKI_RELEASES_REPO/releases/$TAG"
-        GITHUB_USERNAME=$(echo "$GKI_RELEASES_REPO" | awk -F'https://github.com/' '{print $2}' | awk -F'/' '{print $1}')
-        REPO_NAME=$(echo "$GKI_RELEASES_REPO" | awk -F'https://github.com/' '{print $2}' | awk -F'/' '{print $2}')
-
-        # Clone repository
-        git clone --depth=1 "https://${GITHUB_USERNAME}:${GH_TOKEN}@github.com/${GITHUB_USERNAME}/${REPO_NAME}.git" "$WORKDIR/rel" || {
-            echo "❌ Failed to clone GKI releases repository"
-            exit 1
-        }
-
-        cd "$WORKDIR/rel" || exit 1
-
-        # Create release
-        if ! gh release create "$TAG" -t "$RELEASE_MESSAGE"; then
-            echo "❌ Failed to create release $TAG"
-            exit 1
-        fi
-
-        sleep 2
-
-        # Upload files to release
-        for release_file in "$WORKDIR"/*.zip "$WORKDIR"/*.img; do
-            if [ -f $release_file ]; then
-                if ! gh release upload "$TAG" "$release_file"; then
-                    echo "❌ Failed to upload $release_file"
-                    exit 1
-                fi
-                sleep 2
-            fi
-        done
-    fi
-    if [ $STATUS == "STABLE" ] || [ $UPLOAD2GH == "yes" ]; then
-        send_msg "📦 [$RELEASE_MESSAGE]($URL)"
-    else
-        mv $WORKDIR/$ZIP_NAME $BUILDERDIR
-        mv $WORKDIR/*.img $BUILDERDIR
-        send_msg "✅ Build Succedded"
-    fi
-    exit 0
 fi
+
+# Clone AnyKernel
+git clone --depth=1 "$ANYKERNEL_REPO" -b "$ANYKERNEL_BRANCH" $WORKDIR/anykernel
+
+ZIP_NAME=$(
+	echo "$ZIP_NAME" |
+		sed "s/KVER/$KERNEL_VERSION/g" |
+		if [[ $VARIANT == "none" ]]; then
+			sed "s/VARIANT-//g"
+		else
+			sed "s/VARIANT/$VARIANT/g"
+		fi
+)
+
+sed -i "s/kernel.string=.*/kernel.string=${KERNEL_NAME} ${KERNEL_VERSION} (${BUILD_DATE}) ${VARIANT}/g" $WORKDIR/anykernel/anykernel.sh
+if [[ $VARIANT == "none" ]]; then
+	OLD=$(grep 'kernel.string' $WORKDIR/anykernel/anykernel.sh | cut -f2 -d '=')
+	NEW=$(
+		echo "$OLD" |
+			sed "s/none//g"
+	)
+	sed -i "s/kernel.string=.*/kernel.string=${NEW}/g" $WORKDIR/anykernel/anykernel.sh
+fi
+
+if [[ $STATUS == "STABLE" ]] || [[ $BUILD_BOOTIMG == "true" ]]; then
+	# Clone tools
+	AOSP_MIRROR=https://android.googlesource.com
+	BRANCH=main-kernel-build-2024
+	git clone $AOSP_MIRROR/kernel/prebuilts/build-tools -b $BRANCH --depth=1 $WORKDIR/build-tools
+	git clone $AOSP_MIRROR/platform/system/tools/mkbootimg -b $BRANCH --depth=1 $WORKDIR/mkbootimg
+
+	# Variables
+	KERNEL_IMAGES=$(echo $WORKDIR/out/arch/arm64/boot/Image*)
+	AVBTOOL=$WORKDIR/build-tools/linux-x86/bin/avbtool
+	MKBOOTIMG=$WORKDIR/mkbootimg/mkbootimg.py
+	UNPACK_BOOTIMG=$WORKDIR/mkbootimg/unpack_bootimg.py
+	BOOT_SIGN_KEY_PATH=$BUILDERDIR/key/verifiedboot.pem
+	BOOTIMG_NAME="${ZIP_NAME%.zip}-boot-dummy.img"
+	# Note: dummy is the Image format
+
+	# Function
+	generate_bootimg() {
+		local kernel="$1"
+		local output="$2"
+
+		# Create boot image
+		$MKBOOTIMG --header_version 4 \
+			--kernel "$kernel" \
+			--output "$output" \
+			--ramdisk out/ramdisk \
+			--os_version 15.0.0 \
+			--os_patch_level $(date +"%Y-%m")
+
+		sleep 1
+
+		# Sign the boot image
+		$AVBTOOL add_hash_footer \
+			--partition_name boot \
+			--partition_size $((64 * 1024 * 1024)) \
+			--image "$output" \
+			--algorithm SHA256_RSA2048 \
+			--key $BOOT_SIGN_KEY_PATH
+	}
+
+	# Prepare boot image
+	mkdir -p $WORKDIR/bootimg && cd $WORKDIR/bootimg
+	cp $KERNEL_IMAGES .
+
+	# Download and unpack GKI
+	wget -qO gki.zip https://dl.google.com/android/gki/gki-certified-boot-android15-6.6-2025-02_r1.zip
+	unzip -q gki.zip && rm gki.zip
+	$UNPACK_BOOTIMG --boot_img=./boot-6.6.img
+	rm ./boot-6.6.img
+
+	# Generate and sign boot images
+	for format in raw lz4 gz; do
+
+		case $format in
+		raw)
+			kernel="./Image"
+			output="${BOOTIMG_NAME/dummy/raw}"
+			;;
+		lz4)
+			kernel="./Image.lz4"
+			output="${BOOTIMG_NAME/dummy/lz4}"
+			;;
+		gz)
+			kernel="./Image.gz"
+			output="${BOOTIMG_NAME/dummy/gz}"
+			;;
+		esac
+
+		# Generate and sign
+		generate_bootimg "$kernel" "$output"
+		mv "$output" "$WORKDIR"
+	done
+	cd $WORKDIR
+fi
+
+# Zipping
+cd $WORKDIR/anykernel
+cp $KERNEL_IMAGE .
+zip -r9 $WORKDIR/$ZIP_NAME ./* -x LICENSE
+cd ..
+
+if [[ $STATUS == "STABLE" ]] || [[ $UPLOAD2GH == "true" ]]; then
+	## Upload into GitHub Release
+	TAG="$BUILD_DATE"
+	RELEASE_MESSAGE="${ZIP_NAME%.zip}"
+	URL="$GKI_RELEASES_REPO/releases/$TAG"
+	GITHUB_USERNAME=$(echo "$GKI_RELEASES_REPO" | awk -F'https://github.com/' '{print $2}' | awk -F'/' '{print $1}')
+	REPO_NAME=$(echo "$GKI_RELEASES_REPO" | awk -F'https://github.com/' '{print $2}' | awk -F'/' '{print $2}')
+
+	# Clone repository
+	git clone --depth=1 "https://${GITHUB_USERNAME}:${GH_TOKEN}@github.com/${GITHUB_USERNAME}/${REPO_NAME}.git" "$WORKDIR/rel" || {
+		echo "❌ Failed to clone GKI releases repository"
+		exit 1
+	}
+
+	cd "$WORKDIR/rel" || exit 1
+
+	# Create release
+	if ! gh release create "$TAG" -t "$RELEASE_MESSAGE"; then
+		echo "❌ Failed to create release $TAG"
+		exit 1
+	fi
+
+	sleep 2
+
+	# Upload files to release
+	for release_file in "$WORKDIR"/*.zip "$WORKDIR"/*.img; do
+		if [[ -f $release_file ]]; then
+			if ! gh release upload "$TAG" "$release_file"; then
+				echo "❌ Failed to upload $release_file"
+				exit 1
+			fi
+			sleep 2
+		fi
+	done
+fi
+if [[ $STATUS == "STABLE" ]] || [[ $UPLOAD2GH == "true" ]]; then
+	send_msg "📦 [$RELEASE_MESSAGE]($URL)"
+else
+	mv $WORKDIR/$ZIP_NAME $BUILDERDIR
+	mv $WORKDIR/*.img $BUILDERDIR || true
+	send_msg "✅ Build Succedded"
+fi
+exit 0
