@@ -98,10 +98,22 @@ if [[ ! -x $CLANG_PATH/bin/clang || ! -f $CLANG_PATH/VERSION || "$(cat $CLANG_PA
     rm -rf "$CLANG_PATH"
 
     if [[ $USE_AOSP_CLANG == "true" || $CLANG_URL == *.tar.* ]]; then
-        mkdir -p "$CLANG_PATH"
-        wget -q "$CLANG_URL" && tar -xf ./*.tar.* -C "$CLANG_PATH/" && rm ./*.tar.*
+        wget -q "$CLANG_URL" || error "❌ Failed to download clang"
+        TAR_ARCHIVE=./*.tar.*
+        TAR_ARCHIVE_ROOT_DIR=$(tar -tf "$TAR_ARCHIVE" | head -n 1 | cut -d '/' -f1)
+
+        if [[ $TAR_ARCHIVE_ROOT_DIR == "." ]]; then
+            mkdir -p $CLANG_PATH
+            tar -xf $TAR_ARCHIVE -C $CLANG_PATH
+        else
+            tar -xf $TAR_ARCHIVE
+            mv $TAR_ARCHIVE_ROOT_DIR/* $CLANG_PATH
+            rm $TAR_ARCHIVE_ROOT_DIR
+        fi
+
+        rm $TAR_ARCHIVE
     else
-        git clone -q --depth=1 -b "$CUSTOM_CLANG_BRANCH" "$CLANG_URL" "$CLANG_PATH"
+        git clone -q --depth=1 -b $CUSTOM_CLANG_BRANCH $CLANG_URL $CLANG_PATH || error "❌ Failed to download clang"
     fi
 
     echo "$CLANG_INFO" >"$CLANG_PATH/VERSION"
